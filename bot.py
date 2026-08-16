@@ -2,7 +2,7 @@ import os
 import re
 import requests
 from telegram import Update
-from telegram.ext import Application, MessageHandler, ContextTypes, filters
+from telegram.ext import Updater, MessageHandler, Filters, CallbackContext
 
 # =========================================================
 # SETTINGS
@@ -132,19 +132,22 @@ def build_rate_message():
 # TELEGRAM
 # =========================================================
 
-async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+def start(update: Update, context: CallbackContext):
+    update.message.reply_text("سلام! برای دریافت نرخ‌ها، کلمه 'نرخ' رو بفرست.")
+
+def handle_message(update: Update, context: CallbackContext):
     if not update.message:
         return
     text = (update.message.text or "").strip()
     if text == "نرخ":
         try:
             message = build_rate_message()
-            await update.message.reply_text(message)
+            update.message.reply_text(message)
         except Exception as e:
             print("ERROR:", repr(e))
-            await update.message.reply_text("❌ خطا در دریافت نرخ‌ها")
+            update.message.reply_text("❌ خطا در دریافت نرخ‌ها")
     else:
-        await update.message.reply_text("❌")
+        update.message.reply_text("❌")
 
 # =========================================================
 # MAIN
@@ -154,11 +157,14 @@ def main():
     if not BOT_TOKEN:
         raise RuntimeError("BOT_TOKEN تنظیم نشده است")
 
-    app = Application.builder().token(BOT_TOKEN).build()
-    app.add_handler(MessageHandler(filters.TEXT, handle_message))
+    updater = Updater(token=BOT_TOKEN, use_context=True)
+    dp = updater.dispatcher
+
+    dp.add_handler(MessageHandler(Filters.text, handle_message))
 
     print("🤖 Bot is running with polling...")
-    app.run_polling()
+    updater.start_polling()
+    updater.idle()
 
 if __name__ == "__main__":
     main()
