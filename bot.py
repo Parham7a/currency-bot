@@ -1,17 +1,19 @@
 import os
 import re
-import asyncio
 import requests
-import json
 from telegram import Update
 from telegram.ext import Application, MessageHandler, ContextTypes, filters
 
-# ======================== SETTINGS ========================
-BOT_TOKEN = os.getenv("BOT_TOKEN")
-RENDER_URL = os.getenv("RENDER_URL", "").rstrip("/")
-PORT = int(os.getenv("PORT", "10000"))
+# =========================================================
+# SETTINGS
+# =========================================================
 
-# ======================== HELPERS ========================
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+
+# =========================================================
+# HELPERS
+# =========================================================
+
 def toman(number):
     try:
         return f"{int(float(number)):,}"
@@ -23,7 +25,10 @@ def get_json(url, timeout=15):
     r.raise_for_status()
     return r.json()
 
-# ======================== CURRENCIES ========================
+# =========================================================
+# CURRENCIES
+# =========================================================
+
 CURRENCIES = [
     ("🇺🇸", "دلار", "USD"), ("🇪🇺", "یورو", "EUR"), ("🇬🇧", "پوند", "GBP"),
     ("🇨🇭", "فرانک", "CHF"), ("🇨🇦", "دلار کانادا", "CAD"), ("🇹🇷", "لیر", "TRY"),
@@ -46,16 +51,22 @@ def get_currency_rates():
         result.append((flag, name, value))
     return result
 
-# ======================== BONBAST ========================
+# =========================================================
+# BONBAST
+# =========================================================
+
 def get_bonbast_usd():
     try:
         url = "https://api.bonbast.com/price"
         data = get_json(url)
         return float(data.get("USD", {}).get("price", 0))
     except:
-        return 580000  # نرخ پیش‌فرض
+        return 580000
 
-# ======================== CRYPTO ========================
+# =========================================================
+# CRYPTO
+# =========================================================
+
 CRYPTO = [
     ("🟠", "بیت‌کوین", "bitcoin"), ("🔵", "اتریوم", "ethereum"),
     ("💵", "تتر", "tether"), ("🟣", "تون", "the-open-network"),
@@ -75,7 +86,10 @@ def get_crypto_prices(usd_toman):
             result.append((emoji, name, None, None))
     return result
 
-# ======================== GOLD ========================
+# =========================================================
+# GOLD
+# =========================================================
+
 def get_gold_and_coin():
     try:
         url = "https://api.bonbast.com/price"
@@ -86,7 +100,10 @@ def get_gold_and_coin():
     except:
         return None, None
 
-# ======================== RATE MESSAGE ========================
+# =========================================================
+# RATE MESSAGE
+# =========================================================
+
 def build_rate_message():
     usd_toman = get_bonbast_usd()
     currencies = get_currency_rates()
@@ -111,14 +128,17 @@ def build_rate_message():
 
     return "\n".join(lines)
 
-# ======================== TELEGRAM ========================
+# =========================================================
+# TELEGRAM
+# =========================================================
+
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message:
         return
     text = (update.message.text or "").strip()
     if text == "نرخ":
         try:
-            message = await asyncio.to_thread(build_rate_message)
+            message = build_rate_message()
             await update.message.reply_text(message)
         except Exception as e:
             print("ERROR:", repr(e))
@@ -126,23 +146,19 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         await update.message.reply_text("❌")
 
-# ======================== MAIN ========================
+# =========================================================
+# MAIN
+# =========================================================
+
 def main():
     if not BOT_TOKEN:
         raise RuntimeError("BOT_TOKEN تنظیم نشده است")
-    if not RENDER_URL:
-        raise RuntimeError("RENDER_URL تنظیم نشده است")
 
     app = Application.builder().token(BOT_TOKEN).build()
     app.add_handler(MessageHandler(filters.TEXT, handle_message))
 
-    print("🤖 Bot is running...")
-    app.run_webhook(
-        listen="0.0.0.0",
-        port=PORT,
-        url_path=BOT_TOKEN,
-        webhook_url=f"{RENDER_URL}/{BOT_TOKEN}"
-    )
+    print("🤖 Bot is running with polling...")
+    app.run_polling()
 
 if __name__ == "__main__":
     main()
